@@ -236,7 +236,6 @@ async function chatSend(event){
           if (line.startsWith('data:')) {
             if (line.includes('[DONE]')) {
               let markdown = marked.parse(last_element.textContent)
-              //console.log(markdown)
               last_element.innerHTML = markdown
               return;
             }
