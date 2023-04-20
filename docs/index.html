@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="icon" href="./bu_gpt.svg" type="image/svg+xml">
+  <base target="_blank">
+  <title>Chat GPT for API α</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-size:100%;}
+a{color:#fff;}
+body{background:#202123;color:#fff}
+html{background:#202123}
+main{display:flex;height:100vh;width:100%;magin:0px auto;}
+nav{width:15vw}
+section{width:100%;background:#353740;align-items:center;display:flex;flex-direction:column;}
+form{width:800px;height:15vw-32px;display:flex;align-items:end;}
+textarea{background:#6e6e80;padding:8px;width:100%;border-radius:4px;resize: none;color:#fff}
+::placeholder {
+  color:#ccc;
+}
+footer{height:32px}
+#chat_log{margin:32px auto;overflow-y:auto;width:100%;justify-content:center;flex:1}
+#chat_log > li{
+  display:flex;
+  max-width:864px;
+  margin:16px auto;
+}
+#chat_log li > p > span{
+  display:inline-block;
+  width:32px;
+  height:32px;
+  line-height:32px;
+  font-size:20px;
+  background-color:#ccc;
+  border-radius:2px;
+  margin:0 16px 0 auto;
+  text-align:center;
+}
+::-webkit-scrollbar {
+    width:8px;
+}
+::-webkit-scrollbar-track {
+  border-radius:4px;
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, .1);
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(217,217,227,.2);
+  border-radius:4px;
+  box-shadow:0 0 0 1px rgba(255, 255, 255, .1);
+}
+footer input{width:300px}
+
+article{max-width:800px;word-wrap:break-word;width:800px}
+article a{
+  color:#ccc;
+}
+
+article *{
+  font-size:100%;
+  line-height:150%;
+}
+
+article a:hover{
+  text-decoration:none;
+}
+
+
+article pre{
+  background:#000;
+  color:#fff;
+  padding:16px;
+  border-radius:8px;
+  margin:8px;
+}
+article p{
+  font-size:100%;
+}
+
+article code{
+  background:#000;
+  color:#fff;
+  padding:0 4px;
+  margin:0 4px;
+}
+
+article ul, article ol {
+  padding-left:16px;
+}
+
+article ul{
+  list-style: inside;
+}
+
+article hr{
+  margin:16px;
+}
+
+article table,article td,article th {
+border-collapse: collapse;
+border:1px solid #fff;
+}
+article table{
+  margin:8px auto;
+  width:100%;
+}
+
+article td, article th{
+  padding:8px;
+}
+
+</style>
+</head>
+<body>
+<main>
+<nav>
+</nav>
+<section>
+<ul id="chat_log"></ul>
+<form>
+<textarea id="textarea" placeholder="ctrl+enterで送信します"></textarea>
+</form>
+<footer>
+<input type="password" id="api_key" placeholder="open aiのkeyを入力してください">
+</footer>
+</section>
+</main>
+<script>
+let textarea = document.getElementById('textarea')
+let clientHeight = textarea.clientHeight
+const formMax = (window.innerHeight * 0.01) * 25
+
+textarea.addEventListener('input', textAreaSize, false)
+textarea.addEventListener('keypress', chatSend, false)
+
+function textAreaSize(){
+    textarea.style.height = clientHeight + 'px'
+    let scrollHeight = textarea.scrollHeight
+    if ( scrollHeight > formMax){
+      textarea.style.height = formMax + 'px'
+      return
+    }
+    textarea.style.height = scrollHeight + 'px'
+}
+
+function checkKey(){
+  const key_dom = document.getElementById("api_key")
+  if (!localStorage.getItem("myKey") && key_dom.value === ""){
+    alert("必ずopen aiのkeyを入力してください\nAPI Keyが見つからないので使用できません")
+    return false
+  }
+  if (localStorage.getItem("myKey")){
+    key_dom.value = localStorage.getItem("myKey")
+  }
+  localStorage.setItem("myKey", key_dom.value)
+  return true
+}
+
+
+async function chatSend(event){
+  
+  if((event.ctrlKey || event.metaKey) && event.keyCode === 13){
+      if (!checkKey()){
+        return
+      }
+      if (this.value == ""){
+        return
+      }
+      if (this.value.replace(/\s+/g,"") == ""){
+        return
+      }
+
+      event.preventDefault();
+      const myKey = document.getElementById("api_key").value
+      messageHistory.push({ 'role': 'user', 'content': this.value });
+      const url = 'https://api.openai.com/v1/chat/completions';
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${myKey}`,
+        },
+        body: JSON.stringify({
+          'model': 'gpt-3.5-turbo',
+          'stream': true,
+          'messages': messageHistory,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Error:', await response.text());
+        return;
+      }
+      const chat_log = document.getElementById("chat_log")
+      let text = "<p><span>Q</span></p>"
+      text += "<article>" + marked.parse(this.value) + "</article>"
+      let li = document.createElement('li')
+      li.innerHTML = text
+      chat_log.appendChild(li)
+      //空にする
+      this.value = ""
+      this.blur()
+      chat_log
+      chat_log.scrollTop = chat_log.scrollHeight;
+
+      let answer = document.createElement('li')
+      text = "<p><span>A</span></p><article></article>"
+      answer.innerHTML = text
+      chat_log.appendChild(answer)
+      chat_log.scrollTop = chat_log.scrollHeight;
+      let last_element = document.querySelector('#chat_log li:last-of-type article');
+
+      const reader = response.body.getReader();
+      const textDecoder = new TextDecoder();
+      let buffer = '';
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          //console.log("done")
+          //markdownに変更？
+          let markdown = marked.parse(last_element.innerText)
+          last_element.innerHTML = markdown
+          break;
+        }
+        buffer += textDecoder.decode(value, { stream: true });
+        while (true) {
+          const newlineIndex = buffer.indexOf('\n');
+          if (newlineIndex === -1) {
+            //console.log("done2")
+            break;
+          }
+          const line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+          if (line.startsWith('data:')) {
+            if (line.includes('[DONE]')) {
+              let markdown = marked.parse(last_element.textContent)
+              //console.log(markdown)
+              last_element.innerHTML = markdown
+              return;
+            }
+            const jsonData = JSON.parse(line.slice(5));
+            if (jsonData.choices && jsonData.choices[0].delta && jsonData.choices[0].delta.content) {
+                const assistantMessage = jsonData.choices[0].delta.content;
+                last_element.append('' + assistantMessage + '');
+                await appendAssistantResponse(assistantMessage);
+            }
+          }
+        }
+      }
+    }
+}
+
+let messageHistory = [];
+async function appendAssistantResponse(assistantMessage) {
+  messageHistory.push({ 'role': 'assistant', 'content': assistantMessage });
+}
+checkKey()
+</script>
+
+</script>
+</body>
+</html>
