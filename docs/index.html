@@ -10,8 +10,6 @@
   <meta name="robots" content="noindex,nofollow,noarchive" />
   <base target="_blank">
   <title>Chat GPT for API α</title>
-<style>
-</style>
 </head>
 <body>
 <main>
@@ -22,6 +20,7 @@
 <aside>
 <ul>
   <li id="remove_history">履歴の削除</li>
+  <li id="download">ログのダウンロード</li>
   <li>
     <select>
     <option>gpt-3.5-turbo</option>
@@ -52,6 +51,7 @@
 </ul>
 <form>
 <textarea id="textarea" placeholder="ctrl+enterで送信します"></textarea>
+<img src="./send.svg" width="24" height="24" id="send_btn">
 </form>
 <footer>
 <input type="password" id="api_key" placeholder="open aiのkeyを入力してください"><button id="save_key">保存</button>
